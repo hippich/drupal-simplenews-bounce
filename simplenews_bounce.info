@@ -1,0 +1,6 @@
+; $Id$
+name = "Simplenews Bounce"
+description = "Handles email bounce messages for simplenews newsletters"
+dependencies[] = simplenews
+package = Mail
+core = 6.x

@@ -1,0 +1,68 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Simplenews Bounce installation.
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function simplenews_bounce_schema() {
+  $schema['simplenews_bounce'] = array(
+    'description' => t('Bounce messages.'),
+    'fields' => array(
+       'snid' => array(
+        'description' => t('The {simplenews_subscriptions}.snid who is subscribed.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'description' => t('The time the bounce was received.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'subject' => array(
+        'description' => t('The bounce message.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('snid', 'created'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function simplenews_bounce_install() {
+  if (drupal_install_schema('simplenews_bounce')) {
+    drupal_set_message(t('Simplenews Bounce settings are available at the <a href="!simplenews_settings">Simplenews send email settings page</a>.',
+    array('!simplenews_settings' => url('admin/settings/simplenews/mail'))));
+  }
+  else {
+    drupal_set_message(t('The installation of Simplenews Bounce was not successful.'), 'error');
+  }
+  if (variable_get('smtp_library', '') == '') {
+    variable_set('simplenews_bounce_verp_enabled', TRUE);
+    variable_set('smtp_library', drupal_get_filename('module', 'simplenews_bounce'));
+  }
+  else {
+    drupal_set_message(t('Bounce handling is disabled, SMTP library already in use by @file. Disable this library before enabling bounce handling at the <a href="!simplenews_settings">Simplenews send email settings page</a>', array('@file' => variable_get('smtp_library', ''), '!simplenews_settings' => url('admin/settings/simplenews/mail'))));
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function simplenews_bounce_uninstall() {
+  drupal_uninstall_schema('simplenews_bounce');
+  db_query("DELETE FROM {variable} WHERE name LIKE 'simplenews_bounce_%%'");
+}

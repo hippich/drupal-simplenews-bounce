@@ -1,0 +1,135 @@
+<?php
+// $Id$ 
+
+/**
+ * @file
+ * Handles email bounce messages for simplenews newsletters.
+ */
+
+/**
+ * Implemetation of hook_mail_alter().
+ *
+ * Change return path and error path to verp domain.
+ */
+function simplenews_bounce_mail_alter(&$message) {
+  if ($message['id'] == 'simplenews_node' || $message['id'] == 'simplenews_test') {
+    if (variable_get('simplenews_bounce_verp_enabled', FALSE)) {
+      $verp_domain = variable_get('simplenews_bounce_verp_domain', '');
+      $verp_email = $message['params']['context']['account']->snid .'@'. $verp_domain;
+      $message['headers']['Reply-To'] = $verp_email;
+      $message['headers']['Return-Path'] = $verp_email;
+      $message['headers']['Errors-To'] = $verp_email;
+    }
+  }
+}
+
+/**
+ * Overrides Drupal's default mail sending process.
+ *
+ * If using VERP we need to get access to the $additional_parameters field (the fifth arg to mail()
+ * so that we can use the -f needed to set the Return-path header (which can't be done as a standard
+ * header. The reason is some providers (like Yahoo and Google) will actually bounce an email at the
+ * SMTP HELO as soon as the client issues the RCPT command. When this happens the local MTA actually
+ * ignores the Reply-to and Errors-to fields and returns directly to the Return-path.
+ * So, to do this we implement our own SMTP library. This is basically Drupal Core's
+ * implementation of drupal_mail() but using the fifth argument to mail(). As a consequence
+ * simplenews_bounce module is not compatible with Mime Mail and SMTP module.
+ */
+if (strpos(variable_get('smtp_library', ''), 'simplenews_bounce') && !function_exists('drupal_mail_wrapper')) {
+
+  function drupal_mail_wrapper($message) {
+    // Only handle bounce messages of simplenews node and test emails.
+    // Other emails are treated like drupal_mail_send().
+    if ($message['mail_id'] == 'simplenews_node' || $message['mail_id'] == 'simplenews_test') {
+      $mimeheaders = array();
+      foreach ($message['headers'] as $name => $value) {
+        $mimeheaders[] = $name .': '. mime_header_encode($value);
+      }
+      return mail(
+        $message['to'],
+        mime_header_encode($message['subject']),
+        // Note: e-mail uses CRLF for line-endings, but PHP's API requires LF.
+        // They will appear correctly in the actual e-mail that is sent.
+        str_replace("\r", '', $message['body']),
+        // For headers, PHP's API suggests that we use CRLF normally,
+        // but some MTAs incorrecly replace LF with CRLF. See #234403.
+        join("\n", $mimeheaders),
+        //TODO do something with -f parameter here.
+        '-f '. $message['headers']['Reply-To']
+      );
+    }
+    else {
+      $mimeheaders = array();
+      foreach ($message['headers'] as $name => $value) {
+        $mimeheaders[] = $name .': '. mime_header_encode($value);
+      }
+      return mail(
+        $message['to'],
+        mime_header_encode($message['subject']),
+        // Note: e-mail uses CRLF for line-endings, but PHP's API requires LF.
+        // They will appear correctly in the actual e-mail that is sent.
+        str_replace("\r", '', $message['body']),
+        // For headers, PHP's API suggests that we use CRLF normally,
+        // but some MTAs incorrecly replace LF with CRLF. See #234403.
+        join("\n", $mimeheaders)
+      );
+    }
+  }
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+// TODO: replace 'VERP' by 'bounce handling'?
+function simplenews_bounce_form_alter(&$form, $form_state, $form_id) {
+  // Simplenews send mail settings.
+  if ($form_id == 'simplenews_admin_settings_mail') {
+    // Set the smtp_library if simplenews bounce is chosen to handle the mail.
+    if (variable_get('simplenews_bounce_verp_enabled', FALSE)) {
+      if (!strpos(variable_get('smtp_library', ''), 'simplenews_bounce')) {
+        variable_set('smtp_library', drupal_get_filename('module', 'simplenews_bounce'));
+      }
+    }
+    else {
+      if (strpos(variable_get('smtp_library', ''), 'simplenews_bounce')) {
+        variable_del('smtp_library');
+      }
+    }
+
+    $form['simplenews_mail_backend']['verp'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Bounce handling'),
+      '#tree' => FALSE,
+      '#collapsible' => FALSE,
+      '#description' => t('TODO: Explain VERP. Limitation: only apache server, not Windows'),
+    );
+    $form['simplenews_mail_backend']['verp']['simplenews_bounce_verp_enabled'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable bounce handling'),
+      '#default_value' => variable_get('simplenews_bounce_verp_enabled', FALSE),
+    );
+    $form['simplenews_mail_backend']['verp']['simplenews_bounce_verp_domain'] = array(
+      '#type' => 'textfield',
+      '#title' => t('VERP "from" domain'),
+      '#default_value' => variable_get('simplenews_bounce_verp_domain', ''),
+      '#description' => t('TODO: Explain and example'),
+    );
+    // Disable the checkbox if smtp library is claimed by other module.
+    if (variable_get('smtp_library', '') != '' && !strpos(variable_get('smtp_library', ''), 'simplenews_bounce')) {
+      $form['simplenews_mail_backend']['verp']['simplenews_bounce_verp_enabled'] += array(
+        '#disabled' => TRUE,
+        '#description' => t(t('Bounce handling is disabled, SMTP library already in use by @file. Disable this library before enabling bounce handling at the <a href="!simplenews_settings">Simplenews send email settings page</a>', array('@file' => variable_get('smtp_library', ''), '!simplenews_settings' => url('admin/settings/simplenews/mail')))),
+      );
+    }
+    $form['#validate'][] = 'simplenews_bounce_admin_validate';
+  }
+}
+
+function simplenews_bounce_admin_validate($form, &$form_state) {
+  $verp_enabled = isset($form_state['values']['simplenews_bounce_verp_enabled']) && (int)$form_state['values']['simplenews_bounce_verp_enabled'];
+
+  if ($verp_enabled && !strlen($form_state['values']['simplenews_bounce_verp_domain'])) {
+    form_set_error('simplenews_bounce_verp][simplenews_bounce_verp_domain', t('If VERP is enabled a valid domain is required.'));
+  }
+}
+
