@@ -1,4 +1,3 @@
-; $Id$
 name = "Simplenews Bounce"
 description = "Handles email bounce messages for simplenews newsletters"
 dependencies[] = simplenews
