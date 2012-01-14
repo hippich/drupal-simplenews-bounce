@@ -1,134 +1,115 @@
 <?php
 
 /**
- * @file
- * Handles email bounce messages for simplenews newsletters.
- */
-
-/**
  * Implemetation of hook_mail_alter().
- *
- * Change return path and error path to verp domain.
  */
 function simplenews_bounce_mail_alter(&$message) {
-  if ($message['id'] == 'simplenews_node' || $message['id'] == 'simplenews_test') {
-    if (variable_get('simplenews_bounce_verp_enabled', FALSE)) {
-      $verp_domain = variable_get('simplenews_bounce_verp_domain', '');
-      $verp_email = $message['params']['context']['account']->snid .'@'. $verp_domain;
-      $message['headers']['Reply-To'] = $verp_email;
-      $message['headers']['Return-Path'] = $verp_email;
-      $message['headers']['Errors-To'] = $verp_email;
+  // Add bounce handling features when enabled to simplenews mails
+  if (variable_get('simplenews_bounce_handling', 0)) {
+    if ($message['id'] == 'simplenews_node' || $message['id'] == 'simplenews_test') {
+      // Set the correct bounce e-mail address
+      $bounce_email = variable_get('simplenews_bounce_email_address', '');
+      $message['headers']['Reply-To'] = $bounce_email;
+      $message['headers']['Return-Path'] = $bounce_email;
+      $message['headers']['Errors-To'] = $bounce_email;
+
+      // @todo: Also try and do something useful when receipt requests are enabled
+      if (variable_get('simplenews_receipt', 0)) {
+        //$message['headers']['Return-Receipt-To'] = $bounce_email;
+        //$message['headers']['Disposition-Notification-To'] = $bounce_email;
+        //$message['headers']['X-Confirm-Reading-To'] = $bounce_email;
+      }
     }
   }
 }
 
 /**
- * Overrides Drupal's default mail sending process.
- *
- * If using VERP we need to get access to the $additional_parameters field (the fifth arg to mail()
- * so that we can use the -f needed to set the Return-path header (which can't be done as a standard
- * header. The reason is some providers (like Yahoo and Google) will actually bounce an email at the
- * SMTP HELO as soon as the client issues the RCPT command. When this happens the local MTA actually
- * ignores the Reply-to and Errors-to fields and returns directly to the Return-path.
- * So, to do this we implement our own SMTP library. This is basically Drupal Core's
- * implementation of drupal_mail() but using the fifth argument to mail(). As a consequence
- * simplenews_bounce module is not compatible with Mime Mail and SMTP module.
+ * Implementation of hook_menu().
  */
-if (strpos(variable_get('smtp_library', ''), 'simplenews_bounce') && !function_exists('drupal_mail_wrapper')) {
+function simplenews_bounce_menu() {
+  $items = array();
 
-  function drupal_mail_wrapper($message) {
-    // Only handle bounce messages of simplenews node and test emails.
-    // Other emails are treated like drupal_mail_send().
-    if ($message['mail_id'] == 'simplenews_node' || $message['mail_id'] == 'simplenews_test') {
-      $mimeheaders = array();
-      foreach ($message['headers'] as $name => $value) {
-        $mimeheaders[] = $name .': '. mime_header_encode($value);
-      }
-      return mail(
-        $message['to'],
-        mime_header_encode($message['subject']),
-        // Note: e-mail uses CRLF for line-endings, but PHP's API requires LF.
-        // They will appear correctly in the actual e-mail that is sent.
-        str_replace("\r", '', $message['body']),
-        // For headers, PHP's API suggests that we use CRLF normally,
-        // but some MTAs incorrecly replace LF with CRLF. See #234403.
-        join("\n", $mimeheaders),
-        //TODO do something with -f parameter here.
-        '-f '. $message['headers']['Reply-To']
-      );
-    }
-    else {
-      $mimeheaders = array();
-      foreach ($message['headers'] as $name => $value) {
-        $mimeheaders[] = $name .': '. mime_header_encode($value);
-      }
-      return mail(
-        $message['to'],
-        mime_header_encode($message['subject']),
-        // Note: e-mail uses CRLF for line-endings, but PHP's API requires LF.
-        // They will appear correctly in the actual e-mail that is sent.
-        str_replace("\r", '', $message['body']),
-        // For headers, PHP's API suggests that we use CRLF normally,
-        // but some MTAs incorrecly replace LF with CRLF. See #234403.
-        join("\n", $mimeheaders)
-      );
-    }
-  }
+  $items['admin/settings/simplenews/bounce'] = array(
+    'title' => 'Bounce handling',
+    'description' => 'Settings to enable bounce handling for mails.',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('simplenews_bounce_admin'),
+    'file' => 'simplenews_bounce.admin.inc',
+    'access arguments' => array('administer mail bounce settings'),
+  );
+
+  return $items;
 }
 
 /**
- * Implementation of hook_form_alter().
+ * Implementation of hook_perm
  */
-// TODO: replace 'VERP' by 'bounce handling'?
-function simplenews_bounce_form_alter(&$form, $form_state, $form_id) {
-  // Simplenews send mail settings.
-  if ($form_id == 'simplenews_admin_settings_mail') {
-    // Set the smtp_library if simplenews bounce is chosen to handle the mail.
-    if (variable_get('simplenews_bounce_verp_enabled', FALSE)) {
-      if (!strpos(variable_get('smtp_library', ''), 'simplenews_bounce')) {
-        variable_set('smtp_library', drupal_get_filename('module', 'simplenews_bounce'));
-      }
+function simplenews_bounce_perm() {
+  $perms = array(
+    'administer Simplenews Bounce settings',
+    'view Simplenews Bounce reports'
+  );
+
+  return $perms;
+}
+
+function simplenews_bounce_cron() {
+  if (variable_get('simplenews_bounce_handling', 0)) {
+    // Include the PHPMailer-BHM library
+    $path = libraries_get_path('PHPMailer-BHM');
+    define('_PATH_BMH', $path . '/'); // This constant is used by the PHPMailer-BHM library
+    require_once(_PATH_BMH . 'class.phpmailer-bmh.php');
+
+    // Setup the bouncemailhandler to connect to the mailbox
+    $bmh = new BounceMailHandler();
+    $bmh->action_function = 'simplenews_bounce_callback';
+    $bmh->verbose = VERBOSE_QUIET;
+    $bmh->mailhost = variable_get('simplenews_bounce_mailbox_mailhost', '');
+    $bmh->mailbox_username = variable_get('simplenews_bounce_mailbox_username', '');
+    $bmh->mailbox_password = variable_get('simplenews_bounce_mailbox_password', '');
+    $bmh->port = variable_get('simplenews_bounce_mailbox_port', '143');
+    $bmh->service = variable_get('simplenews_bounce_mailbox_service', 'imap');
+    $bmh->service_option = variable_get('simplenews_bounce_mailbox_service_option', 'notls');
+    $bmh->boxname = variable_get('simplenews_bounce_mailbox_boxname', 'INBOX');
+    if (variable_get('simplenews_bounce_keep_unprocessed', 0)) {
+      $bmh->purge_unprocessed = false;
     }
     else {
-      if (strpos(variable_get('smtp_library', ''), 'simplenews_bounce')) {
-        variable_del('smtp_library');
-      }
+      $bmh->purge_unprocessed = true;
     }
 
-    $form['simplenews_mail_backend']['verp'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Bounce handling'),
-      '#tree' => FALSE,
-      '#collapsible' => FALSE,
-      '#description' => t('TODO: Explain VERP. Limitation: only apache server, not Windows'),
-    );
-    $form['simplenews_mail_backend']['verp']['simplenews_bounce_verp_enabled'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Enable bounce handling'),
-      '#default_value' => variable_get('simplenews_bounce_verp_enabled', FALSE),
-    );
-    $form['simplenews_mail_backend']['verp']['simplenews_bounce_verp_domain'] = array(
-      '#type' => 'textfield',
-      '#title' => t('VERP "from" domain'),
-      '#default_value' => variable_get('simplenews_bounce_verp_domain', ''),
-      '#description' => t('TODO: Explain and example'),
-    );
-    // Disable the checkbox if smtp library is claimed by other module.
-    if (variable_get('smtp_library', '') != '' && !strpos(variable_get('smtp_library', ''), 'simplenews_bounce')) {
-      $form['simplenews_mail_backend']['verp']['simplenews_bounce_verp_enabled'] += array(
-        '#disabled' => TRUE,
-        '#description' => t(t('Bounce handling is disabled, SMTP library already in use by @file. Disable this library before enabling bounce handling at the <a href="!simplenews_settings">Simplenews send email settings page</a>', array('@file' => variable_get('smtp_library', ''), '!simplenews_settings' => url('admin/settings/simplenews/mail')))),
-      );
-    }
-    $form['#validate'][] = 'simplenews_bounce_admin_validate';
+    // Process the mailbox
+    $bmh->openMailbox();
+    $bmh->processMailbox();
   }
 }
 
-function simplenews_bounce_admin_validate($form, &$form_state) {
-  $verp_enabled = isset($form_state['values']['simplenews_bounce_verp_enabled']) && (int)$form_state['values']['simplenews_bounce_verp_enabled'];
-
-  if ($verp_enabled && !strlen($form_state['values']['simplenews_bounce_verp_domain'])) {
-    form_set_error('simplenews_bounce_verp][simplenews_bounce_verp_domain', t('If VERP is enabled a valid domain is required.'));
+function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xheader, $remove, $rule_no = false, $rule_cat = false, $totalFetched = 0) {
+  if (strstr($email, '<')) {
+    $pos_start = strpos($email, '<');
+    $pos_end = strpos($email, '>');
+    $email = substr($email, $pos_start + 1);
+    $email = substr($email, 0, $pos_end - 1);
   }
+  $rule_no = intval($rule_no);
+
+  $inserted = false;
+  $query = 'INSERT INTO {simplenews_bounce_mails} (rule_no, rule_cat, bounce_type, mail) VALUES (%d, "%s", "%s", "%s")';
+  $inserted = db_query($query, $rule_no, $rule_cat, $bounce_type, $email);
+
+  if ($inserted !== false) {
+    return true;
+  }
+  return false;
 }
 
+/**
+ * Implementation of hook_views_api().
+ */
+function simplenews_bounce_views_api() {
+  return array(
+    'api' => '2.0',
+    'path' => drupal_get_path('module', 'simplenews_bounce'),
+  );
+}

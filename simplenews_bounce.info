@@ -1,5 +1,8 @@
 name = "Simplenews Bounce"
 description = "Handles email bounce messages for simplenews newsletters"
 dependencies[] = simplenews
+dependencies[] = mimemail
+dependencies[] = libraries
+dependencies[] = views
 package = Mail
 core = 6.x
