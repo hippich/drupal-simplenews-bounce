@@ -1,31 +1,6 @@
 <?php
 
 /**
- * Implemets hook_mail_alter().
- */
-function simplenews_bounce_mail_alter(&$message) {
-  // Add bounce handling features when enabled to simplenews mails.
-  if (variable_get('simplenews_bounce_handling', 0)) {
-    if ($message['id'] == 'simplenews_node' || $message['id'] == 'simplenews_test') {
-      // Set the correct bounce e-mail address.
-      $bounce_email = variable_get('simplenews_bounce_email_address', '');
-      $message['headers']['Reply-To'] = $bounce_email;
-      $message['headers']['Return-Path'] = $bounce_email;
-      $message['headers']['Errors-To'] = $bounce_email;
-
-      // @todo: Also try and do something useful when receipt requests are enabled
-      if (variable_get('simplenews_receipt', 0)) {
-        /*
-         * $message['headers']['Return-Receipt-To'] = $bounce_email;
-         * $message['headers']['Disposition-Notification-To'] = $bounce_email;
-         * $message['headers']['X-Confirm-Reading-To'] = $bounce_email;
-         */
-      }
-    }
-  }
-}
-
-/**
  * Implements hook_menu().
  */
 function simplenews_bounce_menu() {

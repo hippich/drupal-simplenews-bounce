@@ -54,7 +54,6 @@ function simplenews_bounce_install() {
 function simplenews_bounce_uninstall() {
   drupal_uninstall_schema('simplenews_bounce');
   variable_del('simplenews_bounce_handling');
-  variable_del('simplenews_bounce_email_address');
   variable_del('simplenews_bounce_mailbox_mailhost');
   variable_del('simplenews_bounce_mailbox_username');
   variable_del('simplenews_bounce_mailbox_password');

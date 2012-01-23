@@ -4,16 +4,30 @@
  */
 function simplenews_bounce_admin(&$form_state) {
   if (file_exists(libraries_get_path('PHPMailer-BHM') . '/index.php')) {
+    $form['simplenews_bounce_email_address'] = array(
+      '#type' => 'markup',
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+      '#value' => t('Bounce reports will be sent to the <a href="/admin/settings/simplenews/newsletter">Simplenews default From email address</a>.
+        It can be overwritten on each newsletter.
+        It is strongly advised to use a dedicated mailbox for this. (noreply@example.com)'),
+    );
+    
+    // Recommend a module that implements drupal_mail_wrapper() (mimemail)
+    if (!module_exists('mimemail')) {
+      $form['simplenews_bounce_mail_wrapper_module'] = array(
+        '#type' => 'markup',
+        '#prefix' => '<p>',
+        '#suffix' => '</p>',
+        '#value' => t('It is strongly recommended you install and enable a Drupal HTML mail module like <a href="http://drupal.org/project/mimemail">Mime Mail</a>.'),
+      );
+    }
+    
+    // Checkbox to allow enabling this module (only available after the library has been found)
     $form['simplenews_bounce_handling'] = array(
       '#type' => 'checkbox',
       '#title' => t('Enable bounce handling for Simplenews newsletters'),
       '#default_value' => variable_get('simplenews_bounce_handling', 0),
-    );
-    $form['simplenews_bounce_email_address'] = array(
-      '#type' => 'textfield',
-      '#title' => t('email address'),
-      '#required' => TRUE,
-      '#default_value' => variable_get('simplenews_bounce_email_address', ''),
     );
 
     $form['simplenews_bounce_mailbox'] = array(
