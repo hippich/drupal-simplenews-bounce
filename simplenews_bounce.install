@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Implementation of hook_schema().
+ * Implements hook_schema().
  */
 function simplenews_bounce_schema() {
   $schema = array();
@@ -40,7 +40,7 @@ function simplenews_bounce_schema() {
 }
 
 /**
- * Implementation of hook_install().
+ * Implements hook_install().
  */
 function simplenews_bounce_install() {
   if (!drupal_install_schema('simplenews_bounce')) {
@@ -49,7 +49,7 @@ function simplenews_bounce_install() {
 }
 
 /**
- * Implementation of hook_uninstall().
+ * Implements hook_uninstall().
  */
 function simplenews_bounce_uninstall() {
   drupal_uninstall_schema('simplenews_bounce');

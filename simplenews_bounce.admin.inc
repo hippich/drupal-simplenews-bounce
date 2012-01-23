@@ -1,6 +1,6 @@
 <?php
 /**
- * Bounce settings
+ * Bounce settings.
  */
 function simplenews_bounce_admin(&$form_state) {
   if (file_exists(libraries_get_path('PHPMailer-BHM') . '/index.php')) {

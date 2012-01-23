@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Implemetation of hook_mail_alter().
+ * Implemets hook_mail_alter().
  */
 function simplenews_bounce_mail_alter(&$message) {
-  // Add bounce handling features when enabled to simplenews mails
+  // Add bounce handling features when enabled to simplenews mails.
   if (variable_get('simplenews_bounce_handling', 0)) {
     if ($message['id'] == 'simplenews_node' || $message['id'] == 'simplenews_test') {
-      // Set the correct bounce e-mail address
+      // Set the correct bounce e-mail address.
       $bounce_email = variable_get('simplenews_bounce_email_address', '');
       $message['headers']['Reply-To'] = $bounce_email;
       $message['headers']['Return-Path'] = $bounce_email;
@@ -15,16 +15,18 @@ function simplenews_bounce_mail_alter(&$message) {
 
       // @todo: Also try and do something useful when receipt requests are enabled
       if (variable_get('simplenews_receipt', 0)) {
-        //$message['headers']['Return-Receipt-To'] = $bounce_email;
-        //$message['headers']['Disposition-Notification-To'] = $bounce_email;
-        //$message['headers']['X-Confirm-Reading-To'] = $bounce_email;
+        /*
+         * $message['headers']['Return-Receipt-To'] = $bounce_email;
+         * $message['headers']['Disposition-Notification-To'] = $bounce_email;
+         * $message['headers']['X-Confirm-Reading-To'] = $bounce_email;
+         */
       }
     }
   }
 }
 
 /**
- * Implementation of hook_menu().
+ * Implements hook_menu().
  */
 function simplenews_bounce_menu() {
   $items = array();
@@ -43,7 +45,7 @@ function simplenews_bounce_menu() {
 }
 
 /**
- * Implementation of hook_perm
+ * Implements hook_perm
  */
 function simplenews_bounce_perm() {
   $perms = array(
@@ -56,12 +58,12 @@ function simplenews_bounce_perm() {
 
 function simplenews_bounce_cron() {
   if (variable_get('simplenews_bounce_handling', 0)) {
-    // Include the PHPMailer-BHM library
+    // Include the PHPMailer-BHM library.
     $path = libraries_get_path('PHPMailer-BHM');
-    define('_PATH_BMH', $path . '/'); // This constant is used by the PHPMailer-BHM library
+    define('_PATH_BMH', $path . '/'); // This constant is used by the PHPMailer-BHM library .
     require_once(_PATH_BMH . 'class.phpmailer-bmh.php');
 
-    // Setup the bouncemailhandler to connect to the mailbox
+    // Setup the bouncemailhandler to connect to the mailbox.
     $bmh = new BounceMailHandler();
     $bmh->action_function = 'simplenews_bounce_callback';
     $bmh->verbose = VERBOSE_QUIET;
@@ -73,19 +75,19 @@ function simplenews_bounce_cron() {
     $bmh->service_option = variable_get('simplenews_bounce_mailbox_service_option', 'notls');
     $bmh->boxname = variable_get('simplenews_bounce_mailbox_boxname', 'INBOX');
     if (variable_get('simplenews_bounce_keep_unprocessed', 0)) {
-      $bmh->purge_unprocessed = false;
+      $bmh->purge_unprocessed = FALSE;
     }
     else {
-      $bmh->purge_unprocessed = true;
+      $bmh->purge_unprocessed = TRUE;
     }
 
-    // Process the mailbox
+    // Process the mailbox.
     $bmh->openMailbox();
     $bmh->processMailbox();
   }
 }
 
-function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xheader, $remove, $rule_no = false, $rule_cat = false, $totalFetched = 0) {
+function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xheader, $remove, $rule_no = FALSE, $rule_cat = FALSE, $totalFetched = 0) {
   if (strstr($email, '<')) {
     $pos_start = strpos($email, '<');
     $pos_end = strpos($email, '>');
@@ -94,14 +96,14 @@ function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xh
   }
   $rule_no = intval($rule_no);
 
-  $inserted = false;
+  $inserted = FALSE;
   $query = 'INSERT INTO {simplenews_bounce_mails} (rule_no, rule_cat, bounce_type, mail) VALUES (%d, "%s", "%s", "%s")';
   $inserted = db_query($query, $rule_no, $rule_cat, $bounce_type, $email);
 
-  if ($inserted !== false) {
-    return true;
+  if ($inserted !== FALSE) {
+    return TRUE;
   }
-  return false;
+  return FALSE;
 }
 
 /**
