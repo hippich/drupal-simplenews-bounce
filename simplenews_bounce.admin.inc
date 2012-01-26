@@ -2,8 +2,8 @@
 /**
  * Bounce settings.
  */
-function simplenews_bounce_admin(&$form_state) {
-  if (file_exists(libraries_get_path('PHPMailer-BHM') . '/index.php')) {
+function simplenews_bounce_admin($form, &$form_state) {
+  if (file_exists(libraries_get_path('PHPMailer-BMH') . '/index.php')) {
     $form['simplenews_bounce_email_address'] = array(
       '#type' => 'markup',
       '#prefix' => '<p>',
@@ -42,7 +42,6 @@ function simplenews_bounce_admin(&$form_state) {
       '#type' => 'checkbox',
       '#title' => t('Keep unprocessed e-mails'),
       '#description' => t('You may want to check this if this is not a dedicated mailbox for Simplenews Bounce module.'),
-      '#required' => TRUE,
       '#default_value' => variable_get('simplenews_bounce_keep_unprocessed', 0),
     );
     $form['simplenews_bounce_mailbox']['simplenews_bounce_mailbox_mailhost'] = array(
@@ -95,7 +94,7 @@ function simplenews_bounce_admin(&$form_state) {
       '#title' => t('Enable bounce handling for Simplenews newsletters'),
       '#default_value' => 0,
       '#disabled' => TRUE,
-      '#description' => t('You must install PHPMailer-BHM library first.'),
+      '#description' => t('You must install PHPMailer-BMH library first. Download PHPMailer-BMH from https://github.com/hippich/PHPMailer-BMH and unpack it to /sites/all/libraries/PHPMailer-BMH/ folder.'),
     );
   }
 

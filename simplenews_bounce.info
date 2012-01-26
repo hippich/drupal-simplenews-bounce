@@ -3,5 +3,6 @@ description = "Handles email bounce messages for simplenews newsletters"
 dependencies[] = simplenews
 dependencies[] = libraries
 dependencies[] = views
+configure = admin/config/services/simplenews/bounce
 package = Mail
 core = 7.x

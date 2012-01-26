@@ -6,7 +6,7 @@
 function simplenews_bounce_menu() {
   $items = array();
 
-  $items['admin/settings/simplenews/bounce'] = array(
+  $items['admin/config/services/simplenews/bounce'] = array(
     'title' => 'Bounce handling',
     'description' => 'Settings to enable bounce handling for mails.',
     'type' => MENU_NORMAL_ITEM,
@@ -37,9 +37,10 @@ function simplenews_bounce_cron() {
     
   if (variable_get('simplenews_bounce_handling', 0)) {
 
-    // Include the PHPMailer-BHM library.
-    $path = libraries_get_path('PHPMailer-BHM');
+    // Include the PHPMailer-BMH library.
+    $path = libraries_get_path('PHPMailer-BMH');
     define('_PATH_BMH', $path . '/'); // This constant is used by the PHPMailer-BHM library .
+    define('INBOX', 'INBOX');
     require_once(_PATH_BMH . 'class.phpmailer-bmh.php');
 
     // Setup the bouncemailhandler to connect to the mailbox.
@@ -73,21 +74,20 @@ function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xh
     $pos_start = strpos($email, '<');
     $pos_end = strpos($email, '>');
     $email = substr($email, $pos_start + 1);
-    $email = substr($email, 0, $pos_end - 1);
+    $email = substr($email, 0, $pos_end - 2);
   }
+
+  $email = preg_replace('/>.+/', '', $email);
+
   $rule_no = intval($rule_no);
 
-  $inserted = FALSE;
-  $query = 'INSERT INTO {simplenews_bounce_mails} (rule_no, rule_cat, bounce_type, mail) VALUES (%d, "%s", "%s", "%s")';
-  $inserted = db_query($query, $rule_no, $rule_cat, $bounce_type, $email);
-
-  $id = db_insert('simplenews_bounce_mails')
+  $id = db_insert('simplenews_bounce')
         ->fields(
           array(
-            rule_no     => $rule_no,
-            rule_cat    => $rule_cat,
-            bounce_type => $bounce_type,
-            mail        => $email,
+            'rule_no'     => $rule_no,
+            'rule_cat'    => $rule_cat,
+            'bounce_type' => $bounce_type,
+            'mail'        => $email,
           )
         )
         ->execute();
