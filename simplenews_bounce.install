@@ -40,19 +40,9 @@ function simplenews_bounce_schema() {
 }
 
 /**
- * Implements hook_install().
- */
-function simplenews_bounce_install() {
-  if (!drupal_install_schema('simplenews_bounce')) {
-    drupal_set_message(t('The installation of Simplenews Bounce was not successful.'), 'error');
-  }
-}
-
-/**
  * Implements hook_uninstall().
  */
 function simplenews_bounce_uninstall() {
-  drupal_uninstall_schema('simplenews_bounce');
   variable_del('simplenews_bounce_handling');
   variable_del('simplenews_bounce_mailbox_mailhost');
   variable_del('simplenews_bounce_mailbox_username');

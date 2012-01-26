@@ -4,4 +4,4 @@ dependencies[] = simplenews
 dependencies[] = libraries
 dependencies[] = views
 package = Mail
-core = 6.x
+core = 7.x

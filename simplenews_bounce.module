@@ -20,19 +20,23 @@ function simplenews_bounce_menu() {
 }
 
 /**
- * Implements hook_perm
+ * Implements hook_permission
  */
-function simplenews_bounce_perm() {
-  $perms = array(
-    'administer Simplenews Bounce settings',
-    'view Simplenews Bounce reports'
+function simplenews_bounce_permission() {
+  return array(
+    'administer simplenews bounce settings' => array(
+      'title' => t('Administer Simplenews Bounce settings'),
+    ),
+    'view simplenews bounce reports' => array(
+      'title' => t('View Simplenews Bounce reports'),
+    ),
   );
-
-  return $perms;
 }
 
 function simplenews_bounce_cron() {
+    
   if (variable_get('simplenews_bounce_handling', 0)) {
+
     // Include the PHPMailer-BHM library.
     $path = libraries_get_path('PHPMailer-BHM');
     define('_PATH_BMH', $path . '/'); // This constant is used by the PHPMailer-BHM library .
@@ -40,15 +44,17 @@ function simplenews_bounce_cron() {
 
     // Setup the bouncemailhandler to connect to the mailbox.
     $bmh = new BounceMailHandler();
-    $bmh->action_function = 'simplenews_bounce_callback';
-    $bmh->verbose = VERBOSE_QUIET;
-    $bmh->mailhost = variable_get('simplenews_bounce_mailbox_mailhost', '');
+
+    $bmh->action_function  = 'simplenews_bounce_callback';
+    $bmh->verbose          = VERBOSE_QUIET;
+    $bmh->mailhost         = variable_get('simplenews_bounce_mailbox_mailhost', '');
     $bmh->mailbox_username = variable_get('simplenews_bounce_mailbox_username', '');
     $bmh->mailbox_password = variable_get('simplenews_bounce_mailbox_password', '');
-    $bmh->port = variable_get('simplenews_bounce_mailbox_port', '143');
-    $bmh->service = variable_get('simplenews_bounce_mailbox_service', 'imap');
-    $bmh->service_option = variable_get('simplenews_bounce_mailbox_service_option', 'notls');
-    $bmh->boxname = variable_get('simplenews_bounce_mailbox_boxname', 'INBOX');
+    $bmh->port             = variable_get('simplenews_bounce_mailbox_port', '143');
+    $bmh->service          = variable_get('simplenews_bounce_mailbox_service', 'imap');
+    $bmh->service_option   = variable_get('simplenews_bounce_mailbox_service_option', 'notls');
+    $bmh->boxname          = variable_get('simplenews_bounce_mailbox_boxname', 'INBOX');
+
     if (variable_get('simplenews_bounce_keep_unprocessed', 0)) {
       $bmh->purge_unprocessed = FALSE;
     }
@@ -75,16 +81,28 @@ function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xh
   $query = 'INSERT INTO {simplenews_bounce_mails} (rule_no, rule_cat, bounce_type, mail) VALUES (%d, "%s", "%s", "%s")';
   $inserted = db_query($query, $rule_no, $rule_cat, $bounce_type, $email);
 
-  if ($inserted !== FALSE) {
+  $id = db_insert('simplenews_bounce_mails')
+        ->fields(
+          array(
+            rule_no     => $rule_no,
+            rule_cat    => $rule_cat,
+            bounce_type => $bounce_type,
+            mail        => $email,
+          )
+        )
+        ->execute();
+
+  if ($id !== FALSE) {
     return TRUE;
   }
   return FALSE;
 }
 
+// @TODO: Implement views api hook
 /**
  * Implementation of hook_views_api().
  */
-function simplenews_bounce_views_api() {
+function _simplenews_bounce_views_api() {
   return array(
     'api' => '2.0',
     'path' => drupal_get_path('module', 'simplenews_bounce'),
