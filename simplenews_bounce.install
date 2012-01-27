@@ -21,14 +21,22 @@ function simplenews_bounce_schema() {
         'default' => 0,
       ),
       'rule_cat' => array(
-        'type' => 'text',
-        'size' => 'normal',
+        'type' => 'varchar',
+        'length' => 256,
       ),
       'bounce_type' => array(
-        'type' => 'text',
-        'size' => 'normal',
+        'type' => 'varchar',
+        'length' => 256,
       ),
       'mail' => array(
+        'type' => 'varchar',
+        'length' => 256,
+      ),
+      'subject' => array(
+        'type' => 'varchar',
+        'length' => 256,
+      ),
+      'body' => array(
         'type' => 'text',
         'size' => 'normal',
       ),

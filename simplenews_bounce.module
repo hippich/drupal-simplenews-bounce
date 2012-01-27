@@ -69,15 +69,15 @@ function simplenews_bounce_cron() {
   }
 }
 
-function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xheader, $remove, $rule_no = FALSE, $rule_cat = FALSE, $totalFetched = 0) {
+function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xheader, $body, $remove, $rule_no = FALSE, $rule_cat = FALSE, $totalFetched = 0) {
   if (strstr($email, '<')) {
     $pos_start = strpos($email, '<');
     $pos_end = strpos($email, '>');
     $email = substr($email, $pos_start + 1);
-    $email = substr($email, 0, $pos_end - 2);
+    $email = substr($email, 0, $pos_end - 1);
   }
 
-  $email = preg_replace('/>.+/', '', $email);
+  $email = preg_replace('/>.*/', '', $email);
 
   $rule_no = intval($rule_no);
 
@@ -88,6 +88,8 @@ function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xh
             'rule_cat'    => $rule_cat,
             'bounce_type' => $bounce_type,
             'mail'        => $email,
+            'subject'     => $subject,
+            'body'        => $body,
           )
         )
         ->execute();
@@ -98,11 +100,10 @@ function simplenews_bounce_callback($msgnum, $bounce_type, $email, $subject, $xh
   return FALSE;
 }
 
-// @TODO: Implement views api hook
 /**
  * Implementation of hook_views_api().
  */
-function _simplenews_bounce_views_api() {
+function simplenews_bounce_views_api() {
   return array(
     'api' => '2.0',
     'path' => drupal_get_path('module', 'simplenews_bounce'),
