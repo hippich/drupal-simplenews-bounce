@@ -4,6 +4,20 @@
  */
 function simplenews_bounce_admin($form, &$form_state) {
   if (file_exists(libraries_get_path('PHPMailer-BMH') . '/index.php')) {
+
+    // Include the PHPMailer-BMH library.
+    $path = libraries_get_path('PHPMailer-BMH');
+    define('_PATH_BMH', $path . '/'); // This constant is used by the PHPMailer-BHM library .
+    define('INBOX', 'INBOX');
+    require_once(_PATH_BMH . 'class.phpmailer-bmh.php');
+
+    // Setup the bouncemailhandler to connect to the mailbox.
+    $bmh = new BounceMailHandler();
+ 
+    if ($bmh->Version < "5.1") {
+      drupal_set_message(t('Old version of PHPMailer-BMH detected at '. $path .'. Please download latest one at https://github.com/hippich/PHPMailer-BMH.'), 'warning');
+    }
+
     $form['simplenews_bounce_email_address'] = array(
       '#type' => 'markup',
       '#prefix' => '<p>',
