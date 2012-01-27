@@ -6,8 +6,17 @@ function simplenews_bounce_views_data() {
   $data = array();
 
   $data['simplenews_bounce']['table']['group'] = t('Simplenews bounce');
+
+  $data['simplenews_bounce']['table']['base'] = array(
+    'field' => 'bid',
+    'title' => t('Simplenews Bounce'),
+    'help'  => t('Table holding all bounces information.'),
+    'weight' => 11,
+    'database' => 'default',
+  );
+
   $data['simplenews_bounce']['table']['join'] = array(
-    'simplenews_subscriptions' => array(
+    'simplenews_subscriber' => array(
       'left_field' => 'mail',
       'field' => 'mail',
     ),
@@ -92,6 +101,44 @@ function simplenews_bounce_views_data() {
   $data['simplenews_bounce']['mail'] = array(
     'title' => t('mail'),
     'help' => t('Bounced mail address'),
+    'field' => array(
+      'handler' => 'views_handler_field',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_string',
+      'allow empty' => TRUE,
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_string',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+  );
+
+  $data['simplenews_bounce']['subject'] = array(
+    'title' => t('subject'),
+    'help' => t('Bounced mail subject'),
+    'field' => array(
+      'handler' => 'views_handler_field',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_string',
+      'allow empty' => TRUE,
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_string',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+  );
+
+  $data['simplenews_bounce']['body'] = array(
+    'title' => t('body'),
+    'help' => t('Bounced mail body'),
     'field' => array(
       'handler' => 'views_handler_field',
       'click sortable' => TRUE,
